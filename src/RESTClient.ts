@@ -1,13 +1,13 @@
-import {Http,Response} from "angular2/http";
+import {Http,Response} from "@angular/http";
 import {Observer,Observable, Subject, ReplaySubject} from 'rxjs/Rx';
 
 /**
  * REST CLIENT for standards POST, GET, PUT, DELETE request
  */
-class RESTClient<T extends {id:string}> {
+export class RESTClient<T extends {id:string}> {
 
     public observable$:Observable<T[]> = null; // observable for T[]
-    private _observer: Observer; // observer
+    private _observer:any; // observer
     private _store:T[]; // store T[]
     protected _url; // url of rest service
 
@@ -16,7 +16,7 @@ class RESTClient<T extends {id:string}> {
      * @param _http http implementation
      */
     constructor( private _http: Http ) {
-        this.observable$ = new Observable(observer => this._observer = observer).share();
+        this.observable$ = new Observable<T[]>(observer => this._observer = observer).share();
         this._store = []; // empty array at start
     }
 
@@ -25,9 +25,9 @@ class RESTClient<T extends {id:string}> {
      * Get single <T> by Id
      * @return {Observer<T[]>}
      */
-    public one(obj:T):Observable<T>{
+    public one(id:string):Observable<T>{
         return this._http
-            .get(this._url+"/"+obj.id)
+            .get(this._url+"/"+id)
             .map(response => response.json())
             .catch(this.handleError);
     }
@@ -37,7 +37,7 @@ class RESTClient<T extends {id:string}> {
      * Get list of <T> and
      * @return {Observer<T[]>}
      */
-    public list():Observable<T[]>{
+    public list():any{
         return this._http
             .get(this._url)
             .map(response => response.json())
@@ -68,7 +68,7 @@ class RESTClient<T extends {id:string}> {
      * @param obj the <T> object to update
      * @returns {Observer<T>} observer for object updated
      */
-    public update(obj:T):Observable<T> {
+    public update(obj:T):any {
         return this._http
             .put(this._url+"/"+obj.id, JSON.stringify(obj))
             .map(response => response.json())
@@ -88,12 +88,26 @@ class RESTClient<T extends {id:string}> {
     }
 
     /**
+     * PUT OR POST
+     * Update Or Create an object
+     * @param obj the <T> object to save
+     * @returns {Observer<T>} observer for object saved
+     */
+    public save(obj:T):any {
+        if( obj.id ){
+            return this.update(obj);
+        } else {
+            return this.create(obj);
+        }
+    }
+
+    /**
      * DELETE
      * Delete an object
      * @param obj the object to delete
      * @returns {Observer<T>} observer for object deleted
      */
-    public delete(obj:T):Observable<T> {
+    public delete(obj:T):any {
         return this._http
             .delete(this._url+"/"+obj.id)
             .map(response => response.json())
@@ -119,6 +133,7 @@ class RESTClient<T extends {id:string}> {
      * @returns {ErrorObservable}
      */
     protected handleError (error: Response) {
+        console.log(error);
         return Observable.throw(error.json().error || 'Server error');
     }
 }

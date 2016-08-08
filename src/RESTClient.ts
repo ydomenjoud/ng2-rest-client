@@ -95,12 +95,13 @@ export class RESTClient<T extends {_id: string}> {
         options.url = this._url  + ( options.url ? options.url :  "" );
 
         // set search params
-        if( false && params ){
-            let params = new URLSearchParams();
+        if(  params ){
+            let urlSearchParams = new URLSearchParams();
             for( let property in params){
-                params.set(property, params[property]);
+                urlSearchParams.append(property, params[property]);
             }
-            options.search = params;
+            console.log(urlSearchParams);
+            options.search = urlSearchParams;
         }
 
         // send request

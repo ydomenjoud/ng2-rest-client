@@ -1,131 +1,129 @@
-import {Http,Response} from "@angular/http";
-import {Observer,Observable, Subject, ReplaySubject} from 'rxjs/Rx';
+import {Http, Response, URLSearchParams} from "@angular/http";
+import {Observable} from 'rxjs/Rx';
+
 
 /**
  * REST CLIENT for standards POST, GET, PUT, DELETE request
  */
-export class RESTClient<T extends {id:string}> {
+export class RESTClient<T extends {_id: string}> {
 
-    public observable$:Observable<T[]> = null; // observable for T[]
-    private _observer:any; // observer
-    private _store:T[]; // store T[]
     protected _url; // url of rest service
 
     /**
      * default constructor for the REST client
-     * @param _http http implementation
+     * @param _http http own implementation
      */
-    constructor( private _http: Http ) {
-        this.observable$ = new Observable<T[]>(observer => this._observer = observer).share();
-        this._store = []; // empty array at start
+    constructor( private _http: Http ) {}
+
+    /**
+     * POST request meaning creation
+     * @param object to post
+     * @param search extra params send trought http request
+     * @return {Observable<T>} an obversable for the posted object
+     */
+    public post(object:T, params?: {}):Observable<T>{
+        let options = {
+            method: 'POST',
+            body: JSON.stringify(object),
+            headers: {}
+        };
+        return this._request(options, params);
     }
 
     /**
-     * GET
-     * Get single <T> by Id
-     * @return {Observer<T[]>}
+     * PUT request meaning update
+     * @param object to update
+     * @param search extra params send trought http request
+     * @return {Observable<T>} an observable for the updated object
      */
-    public one(id:string):Observable<T>{
-        return this._http
-            .get(this._url+"/"+id)
-            .map(response => response.json())
-            .catch(this.handleError);
+    public put(object:T, params?: {}):Observable<T>{
+        let options = {
+            url: object._id,
+            method: 'PUT',
+            body: JSON.stringify(object)
+        };
+        return this._request(options, params);
     }
 
     /**
-     * GET
-     * Get list of <T> and
-     * @return {Observer<T[]>}
+     * GET request
+     * @param _id to get information
+     * @param search extra params send trought http request
+     * @return {Observable<T>} the requested object
      */
-    public list():any{
-        return this._http
-            .get(this._url)
-            .map(response => response.json())
-            .map(response => {
-                // update store and call next for subscriber
-                this._store = response;
-                this._observer.next(this._store);
-            })
-            .catch(this.handleError);
+    public get(_id:string, params?: {}):Observable<T>{
+        let options = {
+            method: 'GET',
+            url: _id
+        };
+        return this._request(options, params);
     }
 
     /**
-     * POST
-     * Create a new object
-     * @param obj the <T> object to create
-     * @returns {Observer<T>} observer for object created
+     * GET request
+     * @param search extra params send trought http request
+     * @return {Observable<T[]>} the requested object
      */
-    public create(obj:T):Observable<T>{
-        return this._http
-            .post(this._url, JSON.stringify(obj))
-            .map(response => response.json())
-            .catch(this.handleError)
+    public list(params?: {}):Observable<T[]>{
+        let options = {
+            method: 'GET'
+    };
+        return this._request(options, params);
     }
 
     /**
-     * PUT
-     * Update an object
-     * @param obj the <T> object to update
-     * @returns {Observer<T>} observer for object updated
+     * DELETE object
+     * @param object to delete
+     * @param search extra params send trought http request
+     * @return {Observable<T>} the objected deleted
      */
-    public update(obj:T):any {
-        return this._http
-            .put(this._url+"/"+obj.id, JSON.stringify(obj))
-            .map(response => response.json())
-            .map(response => {
-                this._store.some((c, i) => {
-                    if (c.id === obj.id) {
-                        this._store[i] = <T>response;
-                        // update store
-                        this._observer.next(this._store);
-                        return true;
-                    }
-                    return false;
-                });
-
-            })
-            .catch(this.handleError);
+    public delete(object:T, params?: {}):Observable<T>{
+        let options = {
+            url: object._id,
+            method: 'DELETE'
+        };
+        return this._request(options, params);
     }
 
     /**
-     * PUT OR POST
-     * Update Or Create an object
-     * @param obj the <T> object to save
-     * @returns {Observer<T>} observer for object saved
+     * basic request
+     * @param options
+     * @return {Observable<Response>}
      */
-    public save(obj:T):any {
-        if( obj.id ){
-            return this.update(obj);
-        } else {
-            return this.create(obj);
+    private _request(options: {url?: string, search?: URLSearchParams}, params?: {}){
+        // prefix url
+        options.url = this._url + "/" + options.url;
+
+        // set search params
+        if( params ){
+            let params = new URLSearchParams();
+            for( let property in params){
+                params.set(property, params[property]);
+            }
+            options.search = params;
         }
+
+        // send request
+        return this
+            ._http
+            .request(this._url, options)
+            .map(response => response.json()) // map to JSON
+            .catch(this.handleError); // catch error
     }
+
+
+    /** facilities **/
+
 
     /**
-     * DELETE
-     * Delete an object
-     * @param obj the object to delete
-     * @returns {Observer<T>} observer for object deleted
+     * Update Or Create object
+     * @return {Observable<T>}
      */
-    public delete(obj:T):any {
-        return this._http
-            .delete(this._url+"/"+obj.id)
-            .map(response => response.json())
-            .map(response => {
-                // browse store to remove deleted T
-                this._store.some((c, i) => {
-                    if (c.id === obj.id) {
-                        this._store.splice(i, 1);
-                        // update store
-                        this._observer.next(this._store);
-                        return true;
-                    }
-                    return false;
-                });
-
-            })
-            .catch(this.handleError);
+    public save(object:T, params?: {}):Observable<T> {
+        return ( object && object._id ) ? this.put(object, params) : this.post(object, params);
     }
+
+
 
     /**
      * custom error handler
@@ -133,8 +131,7 @@ export class RESTClient<T extends {id:string}> {
      * @returns {ErrorObservable}
      */
     protected handleError (error: Response) {
-        console.log(error);
-        return Observable.throw(error.json().error || 'Server error');
+        return Observable.throw(error|| 'Server error');
     }
 }
 

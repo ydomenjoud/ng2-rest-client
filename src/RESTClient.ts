@@ -24,8 +24,7 @@ export class RESTClient<T extends {_id: string}> {
     public post(object:T, params?: {}):Observable<T>{
         let options = {
             method: 'POST',
-            body: JSON.stringify(object),
-            headers: {}
+            body: JSON.stringify(object)
         };
         return this._request(options, params);
     }
@@ -65,6 +64,7 @@ export class RESTClient<T extends {_id: string}> {
      * @return {Observable<T[]>} the requested object
      */
     public list(params?: {}):Observable<T[]>{
+        console.log("list", params);
         let options = {
             method: 'GET'
     };
@@ -92,10 +92,10 @@ export class RESTClient<T extends {_id: string}> {
      */
     private _request(options: {url?: string, search?: URLSearchParams}, params?: {}){
         // prefix url
-        options.url = this._url + "/" + options.url;
+        options.url = this._url  + ( options.url ? options.url :  "" );
 
         // set search params
-        if( params ){
+        if( false && params ){
             let params = new URLSearchParams();
             for( let property in params){
                 params.set(property, params[property]);
